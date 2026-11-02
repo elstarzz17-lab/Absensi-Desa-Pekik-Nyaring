@@ -59,3 +59,7 @@ server.log
 /tool-results/
 /worklog.md
 /.zscripts/*.pid
+/config.php
+/runtime/*
+!/runtime/.htaccess
+!/runtime/.gitkeep

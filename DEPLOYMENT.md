@@ -1,6 +1,8 @@
-# Absensi Pekik Nyaring — paket InfinityFree
+# Absensi Pekik Nyaring — PHP dan InfinityFree
 
-Paket ini berdiri sendiri dan dapat diunggah langsung ke `htdocs`. Frontend PHP/HTML/JavaScript dan API PHP berada dalam folder ini; tidak memerlukan Next.js, Node.js, npm, Composer, atau file dari folder proyek induk. API memakai PDO dan sesi PHP server-side.
+`index.php` di akar repository adalah aplikasi PHP mandiri untuk hosting seperti InfinityFree. Aplikasi beserta API tidak memerlukan Next.js, Node.js, npm, Composer, atau berkas dari folder lain di repository. Versi Next.js tetap tersedia untuk pengembangan lokal/hosting Node.js; InfinityFree harus menjalankan versi PHP.
+
+Untuk deployment, gunakan ZIP khusus InfinityFree. Jangan unggah seluruh repository secara langsung: ia juga berisi source Next.js dan berkas pengembangan yang tidak diperlukan di hosting.
 
 ## 1. Buat database pada panel hosting
 
@@ -10,7 +12,7 @@ Paket ini berdiri sendiri dan dapat diunggah langsung ke `htdocs`. Frontend PHP/
 
 ## 2. Atur kredensial dan token setup secara privat
 
-1. Salin `config.example.php` menjadi `config.php` di root folder yang akan diunggah. Isi `db_host`, `db_name`, `db_user`, dan `db_password` dengan nilai khusus situs dari panel hosting.
+1. Salin `config.example.php` menjadi `config.php` di `htdocs`. Isi `db_host`, `db_name`, `db_user`, dan `db_password` dengan nilai khusus situs dari panel hosting.
 2. Ganti `setup_token` dengan sedikitnya 32 byte acak (64 karakter hex). Contoh membuat token dengan PowerShell lokal:
 
    ```powershell
@@ -20,7 +22,7 @@ Paket ini berdiri sendiri dan dapat diunggah langsung ke `htdocs`. Frontend PHP/
    ```
 
 3. Jangan menaruh token di URL, Git, tiket publik, atau tangkapan layar. `config.php` sengaja dikecualikan Git dan dilindungi aturan `.htaccess`; simpan salinan cadangannya di tempat privat.
-4. Unggah **isi** folder `infinity-deploy/` ke `htdocs`, termasuk `.htaccess`, `assets/`, `lib/`, dan `runtime/`. Pastikan direktori `runtime/` dapat ditulis PHP dan tidak dapat diakses web (aturan deny sudah disertakan). Jangan unggah `.git`.
+4. Unggah dan ekstrak **isi ZIP InfinityFree** ke `htdocs`, termasuk `index.php`, `.htaccess`, `assets/`, `lib/`, dan `runtime/`. Pastikan `index.php` berada langsung di `htdocs` (bukan di subfolder ZIP). Pastikan direktori `runtime/` dapat ditulis PHP dan tidak dapat diakses web (aturan deny sudah disertakan).
 
 ## 3. Buat admin pertama kali
 
@@ -48,14 +50,14 @@ Database MySQL InfinityFree yang baru tidak otomatis berisi data dari SQLite/XAM
 - Generator kartu QR disertakan lokal di `assets/qrcode.min.js` (lisensi pada `assets/qrcode-LICENSE.txt`); tidak ada permintaan ke CDN atau layanan eksternal.
 - Ekspor `.xlsx` dibuat dengan ekstensi PHP `ZipArchive` dan tidak memerlukan Composer. Jika ekstensi/penulisan runtime tidak tersedia, UI menjelaskan masalah lalu mengunduh CSV sebagai alternatif.
 - XLSX berisi tiga lembar: `Rekap Bulanan` (sel kalender D/DP/P, total hadir/lengkap/tidak hadir dan rekap per hari), `Riwayat Absensi` (digabung per perangkat dan tanggal, termasuk jam/GPS), serta `Data Perangkat Desa`.
-- Validasi paket XLSX lokal (SQLite fixture, ekstensi ZIP/XML PHP): `php infinity-deploy/tests/xlsx_export_test.php`.
+- Validasi paket XLSX lokal (SQLite fixture, ekstensi ZIP/XML PHP): `php tests/xlsx_export_test.php`.
 - Untuk memindai QR memakai kamera, akses situs melalui HTTPS dan izinkan akses kamera di browser.
 - Direktori `runtime/` hanya dipakai untuk file XLSX sementara, yang dihapus setelah dikirim. Bila hosting tidak mengizinkan penulisan, gunakan CSV.
 
 ## Isi paket
 
-- `index.php`: front controller HTML dan router `/api/*`.
-- `lib/api.php`: API attendance, login, sesi/CSRF, one-time installer, dashboard, CRUD dan ekspor XLSX.
+- `index.php`: halaman utama PHP dan router `/api/*`.
+- `lib/api.php`: API absensi, login, sesi/CSRF, installer sekali pakai, dashboard, CRUD, dan ekspor XLSX.
 - `lib/database.php`, `lib/nipd.php`: koneksi ke database yang sudah dibuat, skema tabel, dan pembentukan NIPD.
 - `config.example.php`: template konfigurasi tanpa kredensial.
 - `.htaccess`: front-controller/rewrite dan perlindungan konfigurasi.
