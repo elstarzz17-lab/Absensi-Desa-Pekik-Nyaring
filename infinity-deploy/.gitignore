@@ -1,0 +1,4 @@
+/config.php
+/runtime/*
+!/runtime/.htaccess
+!/runtime/.gitkeep
