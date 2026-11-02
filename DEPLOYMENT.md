@@ -1,8 +1,8 @@
 # Absensi Pekik Nyaring — PHP dan InfinityFree
 
-`index.php` di akar repository adalah aplikasi PHP mandiri untuk hosting seperti InfinityFree. Aplikasi beserta API tidak memerlukan Next.js, Node.js, npm, Composer, atau berkas dari folder lain di repository. Versi Next.js tetap tersedia untuk pengembangan lokal/hosting Node.js; InfinityFree harus menjalankan versi PHP.
+Repository publik ini berisi aplikasi PHP mandiri untuk hosting seperti InfinityFree. `index.php` beserta API tidak memerlukan Next.js, Node.js, npm, Composer, atau berkas dari folder lain.
 
-Untuk deployment, gunakan ZIP khusus InfinityFree. Jangan unggah seluruh repository secara langsung: ia juga berisi source Next.js dan berkas pengembangan yang tidak diperlukan di hosting.
+Anda dapat mengunggah isi repository ke `htdocs`, atau menggunakan ZIP khusus InfinityFree agar hanya berkas aplikasi yang dikirim.
 
 ## 1. Buat database pada panel hosting
 
