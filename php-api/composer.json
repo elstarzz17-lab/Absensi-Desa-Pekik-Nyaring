@@ -1,0 +1,9 @@
+{
+  "name": "absensi-pekik-nyaring/php-api",
+  "description": "REST API PHP untuk sistem absensi perangkat Desa Pekik Nyaring",
+  "license": "proprietary",
+  "require": {
+    "php": "^8.2",
+    "phpoffice/phpspreadsheet": "^2.2"
+  }
+}

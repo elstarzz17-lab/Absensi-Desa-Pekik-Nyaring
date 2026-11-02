@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PerangkatDesa {
+  id              String   @id @default(cuid())
+  nipd            String   @unique
+  namaLengkap     String
+  nik             String?
+  tempatTanggalLahir String?
+  jenisKelamin    String?
+  pendidikanTerakhir String?
+  nomorSK         String?
+  jabatan         String
+  kecamatan       String   @default("Pondok Kelapa")
+  desa            String   @default("Pekik Nyaring")
+  status          String   @default("AKTIF") // AKTIF or PASIF
+  keterangan      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  absensi         Absensi[]
+}
+
+model Absensi {
+  id              String   @id @default(cuid())
+  perangkatDesaId String
+  perangkatDesa   PerangkatDesa @relation(fields: [perangkatDesaId], references: [id], onDelete: Cascade)
+  tipe            String   // DATANG or PULANG
+  kategori        String   // AKTIF or PASIF
+  tanggal         DateTime
+  waktu           String
+  gpsLat          String?
+  gpsLng          String?
+  gpsAccuracy     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
