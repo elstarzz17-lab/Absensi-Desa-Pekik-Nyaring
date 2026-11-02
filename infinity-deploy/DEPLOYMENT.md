@@ -47,6 +47,8 @@ Database MySQL InfinityFree yang baru tidak otomatis berisi data dari SQLite/XAM
 - Pemindai memakai `BarcodeDetector` bawaan browser bila tersedia. NIK/NIPD manual selalu tersedia sebagai alternatif, tanpa memerlukan kamera.
 - Generator kartu QR disertakan lokal di `assets/qrcode.min.js` (lisensi pada `assets/qrcode-LICENSE.txt`); tidak ada permintaan ke CDN atau layanan eksternal.
 - Ekspor `.xlsx` dibuat dengan ekstensi PHP `ZipArchive` dan tidak memerlukan Composer. Jika ekstensi/penulisan runtime tidak tersedia, UI menjelaskan masalah lalu mengunduh CSV sebagai alternatif.
+- XLSX berisi tiga lembar: `Rekap Bulanan` (sel kalender D/DP/P, total hadir/lengkap/tidak hadir dan rekap per hari), `Riwayat Absensi` (digabung per perangkat dan tanggal, termasuk jam/GPS), serta `Data Perangkat Desa`.
+- Validasi paket XLSX lokal (SQLite fixture, ekstensi ZIP/XML PHP): `php infinity-deploy/tests/xlsx_export_test.php`.
 - Untuk memindai QR memakai kamera, akses situs melalui HTTPS dan izinkan akses kamera di browser.
 - Direktori `runtime/` hanya dipakai untuk file XLSX sementara, yang dihapus setelah dikirim. Bila hosting tidak mengizinkan penulisan, gunakan CSV.
 

@@ -479,7 +479,117 @@ function dashboardData(PDO $pdo): never
     ]);
 }
 
-function exportRows(PDO $pdo, string $from, string $to, string $search = ''): array
+function xlsxColumnName(int $number): string
+{
+    $name = '';
+    while ($number > 0) {
+        $remainder = ($number - 1) % 26;
+        $name = chr(65 + $remainder) . $name;
+        $number = intdiv($number - 1, 26);
+    }
+    return $name;
+}
+
+function xmlText(string $value): string
+{
+    $value = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', $value) ?? '';
+    return htmlspecialchars($value, ENT_XML1 | ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
+function xlsxCell(int $column, int $row, mixed $value, int $style = 0): string
+{
+    $reference = xlsxColumnName($column) . $row;
+    $styleAttribute = $style > 0 ? ' s="' . $style . '"' : '';
+    if (is_int($value) || is_float($value)) {
+        return '<c r="' . $reference . '"' . $styleAttribute . '><v>' . $value . '</v></c>';
+    }
+    return '<c r="' . $reference . '" t="inlineStr"' . $styleAttribute . '><is><t xml:space="preserve">' .
+        xmlText((string) ($value ?? '')) . '</t></is></c>';
+}
+
+function xlsxRow(int $row, array $cells): string
+{
+    ksort($cells);
+    $xml = '';
+    foreach ($cells as $column => $cell) {
+        $xml .= xlsxCell((int) $column, $row, $cell[0], (int) ($cell[1] ?? 0));
+    }
+    return '<row r="' . $row . '">' . $xml . '</row>';
+}
+
+function xlsxStylesXml(): string
+{
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
+        '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' .
+        '<fonts count="5"><font><sz val="11"/><name val="Calibri"/></font>' .
+        '<font><b/><color rgb="FFFFFFFF"/><sz val="10"/><name val="Calibri"/></font>' .
+        '<font><b/><color rgb="FFC9A227"/><sz val="16"/><name val="Calibri"/></font>' .
+        '<font><color rgb="FFFFFFFF"/><sz val="10"/><name val="Calibri"/></font>' .
+        '<font><b/><color rgb="FF17492C"/><sz val="11"/><name val="Calibri"/></font></fonts>' .
+        '<fills count="8"><fill><patternFill patternType="none"/></fill>' .
+        '<fill><patternFill patternType="solid"><fgColor rgb="FF17492C"/><bgColor indexed="64"/></patternFill></fill>' .
+        '<fill><patternFill patternType="solid"><fgColor rgb="FF1E6339"/><bgColor indexed="64"/></patternFill></fill>' .
+        '<fill><patternFill patternType="solid"><fgColor rgb="FFDCEFE2"/><bgColor indexed="64"/></patternFill></fill>' .
+        '<fill><patternFill patternType="solid"><fgColor rgb="FFF7EFD4"/><bgColor indexed="64"/></patternFill></fill>' .
+        '<fill><patternFill patternType="solid"><fgColor rgb="FFFDECEA"/><bgColor indexed="64"/></patternFill></fill>' .
+        '<fill><patternFill patternType="solid"><fgColor rgb="FFE8E8E8"/><bgColor indexed="64"/></patternFill></fill>' .
+        '<fill><patternFill patternType="solid"><fgColor rgb="FFFFF8E8"/><bgColor indexed="64"/></patternFill></fill></fills>' .
+        '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>' .
+        '<border><left style="thin"><color rgb="FF777777"/></left><right style="thin"><color rgb="FF777777"/></right>' .
+        '<top style="thin"><color rgb="FF777777"/></top><bottom style="thin"><color rgb="FF777777"/></bottom><diagonal/></border></borders>' .
+        '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' .
+        '<cellXfs count="12">' .
+        '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' .
+        '<xf numFmtId="0" fontId="1" fillId="1" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>' .
+        '<xf numFmtId="0" fontId="2" fillId="1" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>' .
+        '<xf numFmtId="0" fontId="3" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>' .
+        '<xf numFmtId="0" fontId="4" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>' .
+        '<xf numFmtId="0" fontId="4" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>' .
+        '<xf numFmtId="0" fontId="4" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>' .
+        '<xf numFmtId="0" fontId="0" fillId="6" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>' .
+        '<xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>' .
+        '<xf numFmtId="0" fontId="4" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>' .
+        '<xf numFmtId="0" fontId="4" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>' .
+        '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/></cellXfs>' .
+        '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+}
+
+function xlsxWorksheetXml(
+    string $sheetRows,
+    array $merges = [],
+    array $widths = [],
+    int $freezeRows = 0,
+    ?string $filter = null,
+    ?string $printArea = null
+): string {
+    $cols = '';
+    foreach ($widths as $column => $width) {
+        $cols .= '<col min="' . $column . '" max="' . $column . '" width="' . $width . '" customWidth="1"/>';
+    }
+    $mergeXml = '';
+    if ($merges) {
+        $mergeXml = '<mergeCells count="' . count($merges) . '">';
+        foreach ($merges as $merge) {
+            $mergeXml .= '<mergeCell ref="' . $merge . '"/>';
+        }
+        $mergeXml .= '</mergeCells>';
+    }
+    $view = $freezeRows > 0
+        ? '<sheetViews><sheetView showGridLines="0" workbookViewId="0"><pane ySplit="' . $freezeRows .
+            '" topLeftCell="A' . ($freezeRows + 1) . '" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+        : '<sheetViews><sheetView showGridLines="0" workbookViewId="0"/></sheetViews>';
+    $filterXml = $filter ? '<autoFilter ref="' . $filter . '"/>' : '';
+    $printXml = $printArea
+        ? '<printOptions horizontalCentered="1"/><pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.2" footer="0.2"/><pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0" paperSize="9"/>'
+        : '';
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' .
+        $view . '<sheetFormatPr defaultRowHeight="18"/>' .
+        ($cols !== '' ? '<cols>' . $cols . '</cols>' : '') .
+        '<sheetData>' . $sheetRows . '</sheetData>' . $filterXml . $mergeXml . $printXml . '</worksheet>';
+}
+
+function validateExportDates(string $from, string $to): void
 {
     foreach (['from' => $from, 'to' => $to] as $key => $value) {
         $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
@@ -490,50 +600,289 @@ function exportRows(PDO $pdo, string $from, string $to, string $search = ''): ar
     if ($from > $to) {
         respondJson(['success' => false, 'message' => 'Tanggal awal tidak boleh setelah tanggal akhir.'], 400);
     }
+}
+
+function exportWorkbookData(PDO $pdo, string $from, string $to): array
+{
+    validateExportDates($from, $to);
     $fromUtc = (new DateTimeImmutable($from . ' 00:00:00', new DateTimeZone('Asia/Jakarta')))
         ->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');
     $toUtc = (new DateTimeImmutable($to . ' 23:59:59.999999', new DateTimeZone('Asia/Jakarta')))
         ->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s.v');
-    $sql = 'SELECT a.tanggal, a.waktu, a.tipe, a.kategori, a.gpsLat, a.gpsLng, a.gpsAccuracy,
-                   p.nipd, p.namaLengkap, p.jabatan, p.status
-            FROM Absensi a INNER JOIN PerangkatDesa p ON p.id=a.perangkatDesaId
-            WHERE a.tanggal BETWEEN ? AND ?';
-    $params = [$fromUtc, $toUtc];
-    if ($search !== '') {
-        $sql .= ' AND (p.namaLengkap LIKE ? OR p.nipd LIKE ? OR p.nik LIKE ?)';
-        $pattern = '%' . $search . '%';
-        array_push($params, $pattern, $pattern, $pattern);
-    }
-    $query = $pdo->prepare($sql . ' ORDER BY a.tanggal ASC');
-    $query->execute($params);
-    $rows = [];
-    foreach ($query->fetchAll() as $row) {
-        $local = (new DateTimeImmutable($row['tanggal'], new DateTimeZone('UTC')))
+    $devices = $pdo->query('SELECT * FROM PerangkatDesa ORDER BY nipd ASC')->fetchAll();
+    $query = $pdo->prepare(
+        'SELECT a.*, p.nipd, p.namaLengkap, p.jabatan
+         FROM Absensi a INNER JOIN PerangkatDesa p ON p.id=a.perangkatDesaId
+         WHERE a.tanggal BETWEEN ? AND ? ORDER BY a.tanggal ASC'
+    );
+    $query->execute([$fromUtc, $toUtc]);
+    $attendance = [];
+    $history = [];
+    foreach ($query->fetchAll() as $record) {
+        $localDate = (new DateTimeImmutable($record['tanggal'], new DateTimeZone('UTC')))
             ->setTimezone(new DateTimeZone('Asia/Jakarta'));
-        $rows[] = [
-            $local->format('Y-m-d'),
-            $row['nipd'],
-            $row['namaLengkap'],
-            $row['jabatan'],
-            $row['tipe'],
-            $row['kategori'],
-            $row['waktu'],
-            $row['gpsLat'] !== null && $row['gpsLng'] !== null ? $row['gpsLat'] . ', ' . $row['gpsLng'] : '-',
-        ];
+        $date = $localDate->format('Y-m-d');
+        $key = $record['perangkatDesaId'] . '|' . $date;
+        $attendance[$key][$record['tipe']] = true;
+        if (!isset($history[$key])) {
+            $history[$key] = [
+                'tanggal' => $date,
+                'nipd' => $record['nipd'],
+                'nama' => $record['namaLengkap'],
+                'jabatan' => $record['jabatan'],
+                'kategori' => $record['kategori'],
+                'datang' => null,
+                'pulang' => null,
+                'gpsDatang' => null,
+                'gpsPulang' => null,
+            ];
+        }
+        $isComing = $record['tipe'] === 'DATANG';
+        $history[$key][$isComing ? 'datang' : 'pulang'] = $record['waktu'];
+        $history[$key][$isComing ? 'gpsDatang' : 'gpsPulang'] =
+            $record['gpsLat'] !== null && $record['gpsLng'] !== null
+                ? $record['gpsLat'] . ', ' . $record['gpsLng']
+                : '-';
     }
-    return $rows;
+    return compact('from', 'to', 'devices', 'attendance', 'history');
 }
 
-function xmlText(string $value): string
+function writeAttendanceWorkbook(PDO $pdo, string $from, string $to, string $filename): void
 {
-    return htmlspecialchars($value, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+    if (!class_exists(ZipArchive::class)) {
+        throw new RuntimeException('Ekspor XLSX memerlukan ekstensi PHP ZipArchive.');
+    }
+    $data = exportWorkbookData($pdo, $from, $to);
+    $devices = $data['devices'];
+    $attendance = $data['attendance'];
+    $history = $data['history'];
+    $month = new DateTimeImmutable(substr($from, 0, 7) . '-01', new DateTimeZone('Asia/Jakarta'));
+    $year = (int) $month->format('Y');
+    $monthNumber = (int) $month->format('n');
+    $daysInMonth = (int) $month->format('t');
+    $monthLastColumn = $daysInMonth + 6;
+    $monthLastLetter = xlsxColumnName($monthLastColumn);
+    $months = [
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    ];
+    $shortDays = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+    $longDays = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    $summaryRows = '';
+    $summaryMerges = ["A1:{$monthLastLetter}1", "A2:{$monthLastLetter}2", 'A3:C3', 'D3:G3', 'H3:K3', 'L3:O3'];
+    $summaryRows .= xlsxRow(1, [1 => ['REKAP ABSENSI PERANGKAT DESA - ' . strtoupper($months[$monthNumber - 1]) . ' ' . $year, 2]]);
+    $summaryRows .= xlsxRow(2, [1 => ['Pemerintah Desa Pekik Nyaring - Kec. Pondok Kelapa, Kab. Bengkulu Tengah', 3]]);
+    $summaryRows .= xlsxRow(3, [
+        1 => ['DP = Datang & Pulang', 4], 4 => ['D = Hanya Datang', 5],
+        8 => ['Kosong = Tidak Absen', 6], 12 => ['Abu-abu = Akhir Pekan', 7],
+    ]);
+    $summaryMerges = array_merge($summaryMerges, ['A4:A5', 'B4:B5', 'C4:C5']);
+    $summaryHeader = [
+        1 => ['No', 1], 2 => ['Nama Perangkat Desa', 1], 3 => ['Jabatan', 1],
+    ];
+    $weekdayHeader = [];
+    for ($day = 1; $day <= $daysInMonth; $day++) {
+        $column = 3 + $day;
+        $date = $month->setDate($year, $monthNumber, $day);
+        $summaryHeader[$column] = [$day, 1];
+        $weekdayHeader[$column] = [$shortDays[(int) $date->format('w')], 1];
+        $summaryMerges[] = xlsxColumnName($column) . '4:' . xlsxColumnName($column) . '5';
+    }
+    $presentColumn = $daysInMonth + 4;
+    $completeColumn = $daysInMonth + 5;
+    $absentColumn = $daysInMonth + 6;
+    foreach ([
+        $presentColumn => 'Hadir',
+        $completeColumn => 'Lengkap D&P',
+        $absentColumn => 'Tidak Hadir',
+    ] as $column => $text) {
+        $summaryHeader[$column] = [$text, 1];
+        $summaryMerges[] = xlsxColumnName($column) . '4:' . xlsxColumnName($column) . '5';
+    }
+    $summaryRows .= xlsxRow(4, $summaryHeader) . xlsxRow(5, $weekdayHeader);
+    $summaryWidths = [1 => 5, 2 => 30, 3 => 24, $presentColumn => 8, $completeColumn => 13, $absentColumn => 13];
+    for ($day = 1; $day <= $daysInMonth; $day++) {
+        $summaryWidths[3 + $day] = 5;
+    }
+    $firstDay = max($from, $month->format('Y-m-d'));
+    $lastDay = min($to, $month->setDate($year, $monthNumber, $daysInMonth)->format('Y-m-d'));
+    $workingDaysInRange = 0;
+    if ($firstDay <= $lastDay) {
+        $cursor = new DateTimeImmutable($firstDay, new DateTimeZone('Asia/Jakarta'));
+        while ($cursor->format('Y-m-d') <= $lastDay) {
+            $workingDaysInRange += (int) $cursor->format('N') <= 5 ? 1 : 0;
+            $cursor = $cursor->modify('+1 day');
+        }
+    }
+    foreach ($devices as $index => $device) {
+        $rowNumber = $index + 6;
+        $cells = [1 => [$index + 1, 11], 2 => [$device['namaLengkap'], 11], 3 => [$device['jabatan'], 11]];
+        $presentDays = 0;
+        $completeDays = 0;
+        for ($day = 1; $day <= $daysInMonth; $day++) {
+            $date = $month->setDate($year, $monthNumber, $day);
+            $dateKey = $date->format('Y-m-d');
+            $selected = $dateKey >= $from && $dateKey <= $to;
+            $weekend = (int) $date->format('N') > 5;
+            $types = $attendance[$device['id'] . '|' . $dateKey] ?? [];
+            $value = !$selected ? '' : (
+                isset($types['DATANG'], $types['PULANG']) ? 'DP' :
+                (isset($types['DATANG']) ? 'D' : (isset($types['PULANG']) ? 'P' : ''))
+            );
+            $presentDays += $selected && $value !== '' ? 1 : 0;
+            $completeDays += $selected && $value === 'DP' ? 1 : 0;
+            $style = $weekend ? 7 : ($value === 'DP' ? 10 : ($value !== '' ? 9 : 8));
+            $cells[3 + $day] = [$value, $style];
+        }
+        $cells[$presentColumn] = [$presentDays, 11];
+        $cells[$completeColumn] = [$completeDays, 11];
+        $cells[$absentColumn] = [max(0, $workingDaysInRange - $presentDays), 11];
+        $summaryRows .= xlsxRow($rowNumber, $cells);
+    }
+    $dailyTitleRow = count($devices) + 7;
+    $dailyHeaderRow = $dailyTitleRow + 1;
+    $dailySubheaderRow = $dailyTitleRow + 2;
+    $dailyFirstRow = $dailyTitleRow + 3;
+    $summaryRows .= xlsxRow($dailyTitleRow, [1 => ['REKAP KEHADIRAN PER HARI', 3]]);
+    $summaryMerges[] = "A{$dailyTitleRow}:{$monthLastLetter}{$dailyTitleRow}";
+    $dailyHeaders = [
+        1 => ['No', 1], 2 => ['Tanggal', 1], 3 => ['Hari', 1], 4 => ['Jumlah Perangkat', 1],
+    ];
+    $dailySubheaders = [4 => ['Hadir', 1], 5 => ['Lengkap D&P', 1]];
+    $summaryMerges = array_merge($summaryMerges, [
+        "A{$dailyHeaderRow}:A{$dailySubheaderRow}",
+        "B{$dailyHeaderRow}:B{$dailySubheaderRow}",
+        "C{$dailyHeaderRow}:C{$dailySubheaderRow}",
+        "D{$dailyHeaderRow}:E{$dailyHeaderRow}",
+    ]);
+    $summaryRows .= xlsxRow($dailyHeaderRow, $dailyHeaders);
+    $summaryRows .= xlsxRow($dailySubheaderRow, $dailySubheaders);
+    for ($day = 1; $day <= $daysInMonth; $day++) {
+        $date = $month->setDate($year, $monthNumber, $day);
+        $dateKey = $date->format('Y-m-d');
+        $presentCount = 0;
+        $completeCount = 0;
+        foreach ($devices as $device) {
+            $types = $attendance[$device['id'] . '|' . $dateKey] ?? [];
+            $presentCount += isset($types['DATANG']) ? 1 : 0;
+            $completeCount += isset($types['DATANG'], $types['PULANG']) ? 1 : 0;
+        }
+        $rowNumber = $dailyFirstRow + $day - 1;
+        $dailyStyle = (int) $date->format('N') > 5 ? 7 : 11;
+        $summaryRows .= xlsxRow($rowNumber, [
+            1 => [$day, $dailyStyle],
+            2 => [$day . ' ' . $months[$monthNumber - 1] . ' ' . $year, $dailyStyle],
+            3 => [$longDays[(int) $date->format('w')], $dailyStyle],
+            4 => [$presentCount, $dailyStyle],
+            5 => [$completeCount, $dailyStyle],
+        ]);
+    }
+    $dailyLastRow = $dailyFirstRow + $daysInMonth - 1;
+    $summaryWidths[1] = 5;
+    $summaryWidths[2] = 24;
+    $summaryWidths[3] = 14;
+    $historyHeaders = [
+        'No', 'Tanggal', 'NIPD', 'Nama', 'Jabatan', 'Status', 'Jam Datang',
+        'Jam Pulang', 'Kategori', 'Metode', 'GPS Datang', 'GPS Pulang',
+    ];
+    $historyRows = xlsxRow(1, array_map(static fn ($value) => [$value, 1], array_combine(range(1, count($historyHeaders)), $historyHeaders)));
+    $historyItems = array_values($history);
+    usort($historyItems, static fn (array $left, array $right): int =>
+        [$left['tanggal'], $left['nama']] <=> [$right['tanggal'], $right['nama']]
+    );
+    foreach ($historyItems as $index => $record) {
+        $status = $record['datang'] !== null && $record['pulang'] !== null
+            ? 'Hadir Lengkap'
+            : ($record['datang'] !== null ? 'Hadir (Tanpa Pulang)' : 'Pulang Tanpa Datang');
+        $values = [
+            $index + 1, $record['tanggal'], $record['nipd'], $record['nama'], $record['jabatan'],
+            $status, $record['datang'] ?? '-', $record['pulang'] ?? '-', $record['kategori'],
+            'Absensi Aplikasi', $record['gpsDatang'] ?? '-', $record['gpsPulang'] ?? '-',
+        ];
+        $historyRows .= xlsxRow($index + 2, array_map(static fn ($value) => [$value, 11], array_combine(range(1, count($values)), $values)));
+    }
+    $historyWidths = [1 => 5, 2 => 14, 3 => 25, 4 => 28, 5 => 24, 6 => 24, 7 => 14, 8 => 14, 9 => 12, 10 => 20, 11 => 25, 12 => 25];
+    $deviceHeaders = ['No', 'NIPD', 'Nama Lengkap', 'NIK', 'Jabatan', 'Jenis Kelamin', 'Pendidikan', 'Nomor SK', 'Status', 'Keterangan'];
+    $deviceRows = xlsxRow(1, array_map(static fn ($value) => [$value, 1], array_combine(range(1, count($deviceHeaders)), $deviceHeaders)));
+    foreach ($devices as $index => $device) {
+        $values = [
+            $index + 1, $device['nipd'], $device['namaLengkap'], $device['nik'] ?: '-',
+            $device['jabatan'], $device['jenisKelamin'] ?: '-', $device['pendidikanTerakhir'] ?: '-',
+            $device['nomorSK'] ?: '-', $device['status'], $device['keterangan'] ?: '-',
+        ];
+        $deviceRows .= xlsxRow($index + 2, array_map(static fn ($value) => [$value, 11], array_combine(range(1, count($values)), $values)));
+    }
+    $deviceWidths = [1 => 5, 2 => 25, 3 => 28, 4 => 20, 5 => 24, 6 => 16, 7 => 18, 8 => 14, 9 => 12, 10 => 36];
+    $sheets = [
+        'xl/worksheets/sheet1.xml' => xlsxWorksheetXml(
+            $summaryRows, $summaryMerges, $summaryWidths, 5, null, "A1:{$monthLastLetter}{$dailyLastRow}"
+        ),
+        'xl/worksheets/sheet2.xml' => xlsxWorksheetXml(
+            $historyRows, [], $historyWidths, 1, 'A1:L' . max(1, count($historyItems) + 1)
+        ),
+        'xl/worksheets/sheet3.xml' => xlsxWorksheetXml(
+            $deviceRows, [], $deviceWidths, 1, 'A1:J' . max(1, count($devices) + 1)
+        ),
+    ];
+    $sheetNames = ['Rekap Bulanan', 'Riwayat Absensi', 'Data Perangkat Desa'];
+    $contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' .
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' .
+        '<Default Extension="xml" ContentType="application/xml"/>' .
+        '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' .
+        '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>';
+    for ($index = 1; $index <= 3; $index++) {
+        $contentTypes .= '<Override PartName="/xl/worksheets/sheet' . $index .
+            '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+    }
+    $contentTypes .= '</Types>';
+    $sheetsXml = '';
+    $workbookRelations = '';
+    foreach ($sheetNames as $index => $name) {
+        $id = $index + 1;
+        $sheetsXml .= '<sheet name="' . xmlText($name) . '" sheetId="' . $id . '" r:id="rId' . $id . '"/>';
+        $workbookRelations .= '<Relationship Id="rId' . $id .
+            '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' .
+            $id . '.xml"/>';
+    }
+    $workbookRelations .= '<Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>';
+    $printArea = "'Rekap Bulanan'!" . '$A$1:$' . $monthLastLetter . '$' . $dailyLastRow;
+    $files = [
+        '[Content_Types].xml' => $contentTypes,
+        '_rels/.rels' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' .
+            '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' .
+            '</Relationships>',
+        'xl/workbook.xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
+            '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' .
+            'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' .
+            '<sheets>' . $sheetsXml . '</sheets><definedNames><definedName name="_xlnm.Print_Area" localSheetId="0">' .
+            xmlText($printArea) . '</definedName></definedNames></workbook>',
+        'xl/_rels/workbook.xml.rels' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' .
+            $workbookRelations . '</Relationships>',
+        'xl/styles.xml' => xlsxStylesXml(),
+    ];
+    $zip = new ZipArchive();
+    if ($zip->open($filename, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+        throw new RuntimeException('Tidak dapat membuat workbook XLSX.');
+    }
+    foreach ($files + $sheets as $name => $content) {
+        if (!$zip->addFromString($name, $content)) {
+            $zip->close();
+            throw new RuntimeException('Tidak dapat menulis komponen ' . $name . ' pada workbook.');
+        }
+    }
+    if (!$zip->close()) {
+        throw new RuntimeException('Tidak dapat menyelesaikan workbook XLSX.');
+    }
 }
 
 function xlsxExport(PDO $pdo): never
 {
     $from = (string) ($_GET['from'] ?? '');
     $to = (string) ($_GET['to'] ?? '');
-    $rows = exportRows($pdo, $from, $to, trim((string) ($_GET['search'] ?? '')));
+    validateExportDates($from, $to);
     if (!class_exists(ZipArchive::class)) {
         respondJson([
             'success' => false,
@@ -549,69 +898,7 @@ function xlsxExport(PDO $pdo): never
         respondJson(['success' => false, 'message' => 'Tidak dapat menyiapkan file ekspor sementara.'], 503);
     }
     try {
-        $zip = new ZipArchive();
-        if ($zip->open($filename, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            throw new RuntimeException('Tidak dapat membuat workbook XLSX.');
-        }
-        $headers = ['Tanggal', 'NIPD', 'Nama Lengkap', 'Jabatan', 'Tipe', 'Status', 'Waktu', 'Lokasi GPS'];
-        $all = [$headers, ...$rows];
-        $sheetRows = '';
-        foreach ($all as $rowIndex => $row) {
-            $cells = '';
-            foreach ($row as $colIndex => $value) {
-                $letters = '';
-                $number = $colIndex + 1;
-                while ($number > 0) {
-                    $remainder = ($number - 1) % 26;
-                    $letters = chr(65 + $remainder) . $letters;
-                    $number = intdiv($number - 1, 26);
-                }
-                $style = $rowIndex === 0 ? ' s="1"' : '';
-                $cells .= '<c r="' . $letters . ($rowIndex + 1) . '" t="inlineStr"' . $style .
-                    '><is><t xml:space="preserve">' . xmlText((string) $value) . '</t></is></c>';
-            }
-            $sheetRows .= '<row r="' . ($rowIndex + 1) . '">' . $cells . '</row>';
-        }
-        $sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
-            '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' .
-            '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' .
-            '<sheetFormatPr defaultRowHeight="18"/><sheetData>' . $sheetRows . '</sheetData></worksheet>';
-        $files = [
-            '[Content_Types].xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
-                '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' .
-                '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' .
-                '<Default Extension="xml" ContentType="application/xml"/>' .
-                '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' .
-                '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' .
-                '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' .
-                '</Types>',
-            '_rels/.rels' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
-                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' .
-                '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' .
-                '</Relationships>',
-            'xl/workbook.xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
-                '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' .
-                'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' .
-                '<sheets><sheet name="Riwayat Absensi" sheetId="1" r:id="rId1"/></sheets></workbook>',
-            'xl/_rels/workbook.xml.rels' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
-                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' .
-                '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' .
-                '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' .
-                '</Relationships>',
-            'xl/styles.xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' .
-                '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' .
-                '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="11"/><name val="Calibri"/></font></fonts>' .
-                '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF173B2B"/><bgColor indexed="64"/></patternFill></fill></fills>' .
-                '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' .
-                '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' .
-                '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="1" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs>' .
-                '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>',
-        ];
-        foreach ($files as $name => $content) {
-            $zip->addFromString($name, $content);
-        }
-        $zip->addFromString('xl/worksheets/sheet1.xml', $sheet);
-        $zip->close();
+        writeAttendanceWorkbook($pdo, $from, $to, $filename);
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment; filename="Rekap-Absensi-' . $from . '-sd-' . $to . '.xlsx"');
         header('Cache-Control: no-store, private');
@@ -718,6 +1005,7 @@ function clearAdminSession(): void
     session_destroy();
 }
 
+if (PHP_SAPI !== 'cli') {
 startAdminSession();
 $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $path = rtrim(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/', '/') ?: '/';
@@ -817,4 +1105,5 @@ try {
         $message = $error->getMessage();
     }
     respondJson(['success' => false, 'message' => $message], 500);
+}
 }
