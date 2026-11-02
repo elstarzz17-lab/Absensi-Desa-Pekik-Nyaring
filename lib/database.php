@@ -21,6 +21,12 @@ function appConfig(): array
     if ($config['db_host'] === '' || $config['db_name'] === '' || $config['db_user'] === '') {
         throw new RuntimeException('Host, nama database, dan user database wajib diisi.');
     }
+    if ($config['db_host'] === 'sqlXXX.infinityfree.com'
+        || str_contains($config['db_name'], 'XXXXXXXX')
+        || str_contains($config['db_user'], 'XXXXXXXX')
+        || str_starts_with($config['db_password'], 'GANTI_DENGAN_')) {
+        throw new RuntimeException('config.php masih berisi contoh. Isi host, nama database, username, dan password dari panel InfinityFree.');
+    }
     if (!preg_match('/^[A-Za-z0-9_]+$/', $config['db_name'])) {
         throw new RuntimeException('Nama database dari panel hosting tidak valid.');
     }

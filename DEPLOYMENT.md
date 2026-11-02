@@ -12,7 +12,7 @@ Anda dapat mengunggah isi repository ke `htdocs`, atau menggunakan ZIP khusus In
 
 ## 2. Atur kredensial dan token setup secara privat
 
-1. Salin `config.example.php` menjadi `config.php` di `htdocs`. Isi `db_host`, `db_name`, `db_user`, dan `db_password` dengan nilai khusus situs dari panel hosting.
+1. ZIP InfinityFree terbaru menyertakan `config.php` sebagai template. Edit file itu di komputer sebelum mengunggah dan isi `db_host`, `db_name`, `db_user`, serta `db_password` persis seperti di panel hosting. Jika mengambil source dari GitHub, salin `config.example.php` menjadi `config.php`.
 2. Ganti `setup_token` dengan sedikitnya 32 byte acak (64 karakter hex). Contoh membuat token dengan PowerShell lokal:
 
    ```powershell
@@ -22,7 +22,9 @@ Anda dapat mengunggah isi repository ke `htdocs`, atau menggunakan ZIP khusus In
    ```
 
 3. Jangan menaruh token di URL, Git, tiket publik, atau tangkapan layar. `config.php` sengaja dikecualikan Git dan dilindungi aturan `.htaccess`; simpan salinan cadangannya di tempat privat.
-4. Unggah dan ekstrak **isi ZIP InfinityFree** ke `htdocs`, termasuk `index.php`, `.htaccess`, `assets/`, `lib/`, dan `runtime/`. Pastikan `index.php` berada langsung di `htdocs` (bukan di subfolder ZIP). Pastikan direktori `runtime/` dapat ditulis PHP dan tidak dapat diakses web (aturan deny sudah disertakan).
+4. Unggah dan ekstrak **isi ZIP InfinityFree** ke `htdocs`, termasuk `config.php`, `index.php`, `.htaccess`, `assets/`, `lib/`, dan `runtime/`. Pastikan `index.php` berada langsung di `htdocs` (bukan di subfolder ZIP). Pastikan direktori `runtime/` dapat ditulis PHP dan tidak dapat diakses web (aturan deny sudah disertakan).
+
+**Jangan unggah konfigurasi template tanpa mengisinya terlebih dahulu.** Jika halaman menampilkan pesan bahwa konfigurasi masih berisi contoh, edit `config.php` dengan data database dari panel hosting. Aplikasi PHP ini memakai `config.php`; berkas `.env` tidak dibaca.
 
 ## 3. Buat admin pertama kali
 

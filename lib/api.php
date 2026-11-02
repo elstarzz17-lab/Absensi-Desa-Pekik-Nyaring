@@ -1103,6 +1103,17 @@ try {
     $message = 'Terjadi kesalahan server. Periksa konfigurasi database dan log hosting.';
     if (str_contains($error->getMessage(), 'Konfigurasi')) {
         $message = $error->getMessage();
+    } elseif ($error instanceof PDOException) {
+        $driverCode = (int) ($error->errorInfo[1] ?? 0);
+        if (in_array($driverCode, [1044, 1045], true)) {
+            $message = 'Database menolak akses. Periksa username, password, dan hak akses database pada config.php.';
+        } elseif ($driverCode === 1049) {
+            $message = 'Database tidak ditemukan. Cocokkan nama database lengkap dengan yang tertera di panel hosting.';
+        } elseif (in_array($driverCode, [2002, 2003], true)) {
+            $message = 'Server database tidak dapat dijangkau. Periksa host database di panel hosting.';
+        } elseif (str_contains(strtolower($error->getMessage()), 'could not find driver')) {
+            $message = 'Ekstensi PDO MySQL tidak aktif pada PHP hosting.';
+        }
     }
     respondJson(['success' => false, 'message' => $message], 500);
 }
