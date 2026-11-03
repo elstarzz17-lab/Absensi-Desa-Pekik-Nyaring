@@ -1,5 +1,4 @@
 Options -Indexes
-DirectoryIndex index.html index.php
 
 <FilesMatch "^(config\.php|config\.example\.php)$">
   Require all denied
