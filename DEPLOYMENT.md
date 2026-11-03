@@ -1,8 +1,8 @@
 # Absensi Pekik Nyaring — PHP dan InfinityFree
 
-Repository publik ini berisi aplikasi PHP mandiri untuk hosting seperti InfinityFree. `index.php` beserta API tidak memerlukan Next.js, Node.js, npm, Composer, atau berkas dari folder lain.
+Repository publik ini berisi aplikasi absensi untuk hosting Apache/PHP seperti InfinityFree. Browser memuat antarmuka statis dari `index.html` dan memanggil API PHP pada origin yang sama; API menyimpan data di MySQL. `index.php` tetap menjadi router API dan fallback Apache. Aplikasi tidak memerlukan Next.js, Node.js, npm, Composer, atau berkas dari folder lain.
 
-Anda dapat mengunggah isi repository ke `htdocs`, atau menggunakan ZIP khusus InfinityFree agar hanya berkas aplikasi yang dikirim.
+Unggah atau ekstrak **isi ZIP khusus InfinityFree langsung ke `htdocs`**, bukan ke subfolder. ZIP ini berisi `index.html` sebagai halaman aplikasi serta file PHP yang menyediakan backend.
 
 ## 1. Buat database pada panel hosting
 
@@ -22,7 +22,7 @@ Anda dapat mengunggah isi repository ke `htdocs`, atau menggunakan ZIP khusus In
    ```
 
 3. Jangan menaruh token di URL, Git, tiket publik, atau tangkapan layar. `config.php` sengaja dikecualikan Git dan dilindungi aturan `.htaccess`; simpan salinan cadangannya di tempat privat.
-4. Unggah dan ekstrak **isi ZIP InfinityFree** ke `htdocs`, termasuk `config.php`, `index.php`, `.htaccess`, `assets/`, `lib/`, dan `runtime/`. Pastikan `index.php` berada langsung di `htdocs` (bukan di subfolder ZIP). Pastikan direktori `runtime/` dapat ditulis PHP dan tidak dapat diakses web (aturan deny sudah disertakan).
+4. Unggah dan ekstrak **isi ZIP InfinityFree langsung ke `htdocs`**, termasuk `index.html`, `config.php`, `index.php`, `.htaccess`, `assets/`, `lib/`, dan `runtime/`. Pastikan file-file tersebut berada langsung di `htdocs`, bukan di subfolder ZIP. Apache menyajikan `index.html` sebagai halaman utama; aturan rewrite di `.htaccess` meneruskan endpoint `/api/*` ke `index.php`, yang memakai PHP dan database MySQL dari hosting. Pastikan direktori `runtime/` dapat ditulis PHP dan tidak dapat diakses web (aturan deny sudah disertakan).
 
 **Jangan unggah konfigurasi template tanpa mengisinya terlebih dahulu.** Jika halaman menampilkan pesan bahwa konfigurasi masih berisi contoh, edit `config.php` dengan data database dari panel hosting. Aplikasi PHP ini memakai `config.php`; berkas `.env` tidak dibaca.
 
@@ -58,9 +58,12 @@ Database MySQL InfinityFree yang baru tidak otomatis berisi data dari SQLite/XAM
 
 ## Isi paket
 
-- `index.php`: halaman utama PHP dan router `/api/*`.
+- `index.html`: halaman aplikasi statis yang memuat `assets/app.css` dan JavaScript lokal.
+- `index.php`: router PHP untuk API `/api/*` dan fallback HTML.
 - `lib/api.php`: API absensi, login, sesi/CSRF, installer sekali pakai, dashboard, CRUD, dan ekspor XLSX.
 - `lib/database.php`, `lib/nipd.php`: koneksi ke database yang sudah dibuat, skema tabel, dan pembentukan NIPD.
 - `config.example.php`: template konfigurasi tanpa kredensial.
 - `.htaccess`: front-controller/rewrite dan perlindungan konfigurasi.
 - `assets/`: CSS, JavaScript aplikasi, dan generator QR yang dibundel.
+
+Unggah semua isi paket, termasuk `index.html`, ke akar `htdocs`; jangan membungkusnya dalam direktori tambahan.
