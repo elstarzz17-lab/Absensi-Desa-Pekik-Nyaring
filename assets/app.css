@@ -149,6 +149,7 @@ a { color: inherit; }
 .scanner-head { padding: 19px 20px 14px; }
 .scanner-stage { background: #12281d; margin: 0 18px; aspect-ratio: 16/9; border-radius: 12px; position: relative; overflow: hidden; display: grid; place-items: center; }
 .scanner-stage video { width: 100%; height: 100%; object-fit: cover; }
+.scanner-stage #scanner-stage__scan_region { width: 100%; min-height: 100%; }
 .scan-placeholder { color: rgba(255,255,255,.7); text-align: center; padding: 22px; max-width: 340px; line-height: 1.6; font-size: 12px; }
 .scan-reticle { position: absolute; inset: 20%; border: 1px solid rgba(230,204,139,.65); border-radius: 18px; pointer-events: none; box-shadow: 0 0 0 999px rgba(0,0,0,.10); }
 .scanner-controls { padding: 16px 18px 19px; display: flex; gap: 9px; flex-wrap: wrap; }
@@ -184,7 +185,6 @@ a { color: inherit; }
 .pagination-note { padding: 12px 15px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
 .mobile-nav { display: none; }
 .mobile-menu-btn { display: none; }
-
 @media (max-width: 1050px) {
   .app-layout { grid-template-columns: 218px minmax(0,1fr); }
   .dashboard-grid { grid-template-columns: 1fr; }

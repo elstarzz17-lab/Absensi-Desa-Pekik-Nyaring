@@ -24,6 +24,7 @@ function isHttpsRequest(): bool
 
 function startAdminSession(): void
 {
+    $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
     ini_set('session.use_strict_mode', '1');
     ini_set('session.use_only_cookies', '1');
     ini_set('session.cookie_httponly', '1');
@@ -40,7 +41,11 @@ function startAdminSession(): void
 
 function readJsonBody(): array
 {
-    $body = json_decode(file_get_contents('php://input') ?: '', true);
+    $raw = file_get_contents('php://input') ?: '';
+    if (strlen($raw) > 1500000) {
+        respondJson(['success' => false, 'message' => 'Ukuran permintaan melebihi batas.'], 413);
+    }
+    $body = json_decode($raw, true);
     if (!is_array($body)) {
         respondJson(['success' => false, 'message' => 'Format permintaan tidak valid.'], 400);
     }
@@ -1034,7 +1039,6 @@ if (!in_array($method . ' ' . $path, $publicRoutes, true)) {
 
 try {
     $pdo = connectToDatabase();
-
     if ($path === '/api/auth/setup/status' && $method === 'GET') {
         setupStatus($pdo);
     }

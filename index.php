@@ -33,6 +33,7 @@ if (str_starts_with($path, '/assets/')) {
   <meta name="theme-color" content="#173b2b">
   <title>Absensi Pekik Nyaring</title>
   <link rel="stylesheet" href="assets/app.css">
+  <script defer src="assets/html5-qrcode.min.js"></script>
   <script defer src="assets/qrcode.min.js"></script>
   <script defer src="assets/app.js"></script>
 </head>

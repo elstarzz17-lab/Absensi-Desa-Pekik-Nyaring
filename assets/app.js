@@ -16,8 +16,7 @@
     deviceSearch: '',
     deviceStatus: '',
     scanMode: 'DATANG',
-    stream: null,
-    scannerTimer: null,
+    scanner: null,
     lastScan: '',
     setupRequired: false,
   };
@@ -276,61 +275,89 @@
     const stage = document.getElementById('scanner-stage');
     const placeholder = document.getElementById('scanner-placeholder');
     if (!stage || !placeholder) return;
-    if (!('BarcodeDetector' in window) || !navigator.mediaDevices?.getUserMedia) {
-      placeholder.textContent = 'Pemindai QR tidak didukung browser ini. Gunakan input NIK/NIPD manual — fitur ini selalu tersedia.';
-      notify('Kamera QR tidak didukung; silakan gunakan input manual.', 'error');
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+      placeholder.textContent = 'Kamera memerlukan HTTPS dan izin kamera. Gunakan input NIK/NIPD manual jika belum tersedia.';
+      notify('Kamera memerlukan HTTPS dan izin kamera; silakan gunakan input manual.', 'error');
       return;
     }
+    if (!window.Html5Qrcode || !window.Html5QrcodeSupportedFormats) {
+      placeholder.textContent = 'Komponen pemindai QR belum termuat. Muat ulang halaman atau gunakan input manual.';
+      notify('Komponen pemindai QR belum termuat.', 'error');
+      return;
+    }
+    stage.replaceChildren();
+    const start = document.getElementById('camera-start');
+    const stop = document.getElementById('camera-stop');
+    if (start) start.disabled = true;
+    if (stop) stop.disabled = false;
+    const scanner = new window.Html5Qrcode(stage.id, {
+      verbose: false,
+      formatsToSupport: [window.Html5QrcodeSupportedFormats.QR_CODE],
+      useBarCodeDetectorIfSupported: false,
+    });
+    state.scanner = scanner;
     try {
-      const detector = new BarcodeDetector({ formats: ['qr_code'] });
-      state.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
-      stage.innerHTML = '<video id="scanner-video" muted playsinline></video><div class="scan-reticle"></div>';
-      const video = document.getElementById('scanner-video');
-      video.srcObject = state.stream;
-      await video.play();
-      document.getElementById('camera-start').disabled = true;
-      document.getElementById('camera-stop').disabled = false;
-      const tick = async () => {
-        if (!state.stream || !video.isConnected || video.readyState < 2) return;
-        try {
-          const codes = await detector.detect(video);
-          if (codes.length && codes[0].rawValue) {
-            const value = extractIdentity(codes[0].rawValue);
-            if (value && value !== state.lastScan) {
-              state.lastScan = value;
-              stopScanner();
-              const input = document.getElementById('attendance-identity');
-              if (input) {
-                input.value = value;
-                await submitAttendance(new Event('submit', { cancelable: true }));
-              }
+      await scanner.start(
+        { facingMode: 'environment' },
+        {
+          fps: 10,
+          qrbox: (width, height) => {
+            const size = Math.floor(Math.min(width, height, 250));
+            return { width: size, height: size };
+          },
+        },
+        async (decodedText) => {
+          if (state.scanner !== scanner) return;
+          const value = extractIdentity(decodedText);
+          if (value && value !== state.lastScan) {
+            state.lastScan = value;
+            stopScanner();
+            const input = document.getElementById('attendance-identity');
+            if (input) {
+              input.value = value;
+              await submitAttendance(new Event('submit', { cancelable: true }));
             }
           }
-        } catch { /* Continue scanning while the camera frame is not ready. */ }
-        if (state.stream) state.scannerTimer = window.setTimeout(tick, 280);
-      };
-      state.scannerTimer = window.setTimeout(tick, 350);
+        },
+        () => {},
+      );
+      if (state.scanner !== scanner) {
+        if (scanner.isScanning) await scanner.stop();
+        scanner.clear();
+      }
     } catch (error) {
+      if (state.scanner !== scanner) return;
       stopScanner();
       const currentPlaceholder = document.getElementById('scanner-placeholder');
       if (currentPlaceholder) currentPlaceholder.textContent = 'Kamera tidak dapat dibuka. Periksa izin browser atau masukkan NIK/NIPD secara manual.';
-      notify(error.message || 'Kamera tidak dapat dibuka.', 'error');
+      notify(error instanceof Error ? error.message : 'Kamera tidak dapat dibuka.', 'error');
     }
   }
 
   function stopScanner() {
-    if (state.scannerTimer) window.clearTimeout(state.scannerTimer);
-    state.scannerTimer = null;
-    if (state.stream) state.stream.getTracks().forEach((track) => track.stop());
-    state.stream = null;
+    const scanner = state.scanner;
+    state.scanner = null;
     const start = document.getElementById('camera-start');
     const stop = document.getElementById('camera-stop');
     if (start) start.disabled = false;
     if (stop) stop.disabled = true;
-    const stage = document.getElementById('scanner-stage');
-    if (stage && !document.getElementById('scanner-placeholder')) {
-      stage.innerHTML = '<div class="scan-placeholder" id="scanner-placeholder">Kamera dihentikan. Gunakan tombol kamera atau input manual.</div><div class="scan-reticle"></div>';
+    const resetStage = () => {
+      const stage = document.getElementById('scanner-stage');
+      if (stage) stage.innerHTML = '<div class="scan-placeholder" id="scanner-placeholder">Kamera dihentikan. Gunakan tombol kamera atau input manual.</div><div class="scan-reticle"></div>';
+    };
+    if (!scanner) {
+      resetStage();
+      return;
     }
+    const stopped = scanner.isScanning ? scanner.stop() : Promise.resolve();
+    void stopped.then(() => {
+      scanner.clear();
+      resetStage();
+    }).catch((error) => {
+      console.error('Pemindai QR gagal dihentikan dengan benar:', error);
+      const placeholder = document.getElementById('scanner-placeholder');
+      if (placeholder) placeholder.textContent = 'Kamera belum dapat ditutup. Muat ulang halaman jika kamera tetap aktif.';
+    });
   }
 
   function extractIdentity(raw) {
@@ -691,5 +718,6 @@
     }
   }
 
+  window.addEventListener('pagehide', stopScanner);
   boot();
 })();

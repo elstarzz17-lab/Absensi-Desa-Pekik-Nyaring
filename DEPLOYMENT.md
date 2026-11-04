@@ -22,7 +22,7 @@ Anda dapat mengunggah isi repository ke `htdocs`, atau menggunakan ZIP khusus In
    ```
 
 3. Jangan menaruh token di URL, Git, tiket publik, atau tangkapan layar. `config.php` sengaja dikecualikan Git dan dilindungi aturan `.htaccess`; simpan salinan cadangannya di tempat privat.
-4. Unggah dan ekstrak **isi ZIP InfinityFree** ke `htdocs`, termasuk `config.php`, `index.php`, `.htaccess`, `assets/`, `lib/`, dan `runtime/`. Pastikan `index.php` berada langsung di `htdocs` (bukan di subfolder ZIP). Pastikan direktori `runtime/` dapat ditulis PHP dan tidak dapat diakses web (aturan deny sudah disertakan).
+4. Unggah dan ekstrak **isi ZIP InfinityFree** ke `htdocs`, termasuk `config.example.php`, `index.php`, `.htaccess`, `assets/`, `lib/`, dan `runtime/`. Salin `config.example.php` menjadi `config.php`, isi nilainya, lalu unggah `config.php` ke `htdocs`. Pastikan `index.php` berada langsung di `htdocs` (bukan di subfolder ZIP). Pastikan direktori `runtime/` dapat ditulis PHP dan tidak dapat diakses web (aturan deny sudah disertakan).
 
 **Jangan unggah konfigurasi template tanpa mengisinya terlebih dahulu.** Jika halaman menampilkan pesan bahwa konfigurasi masih berisi contoh, edit `config.php` dengan data database dari panel hosting. Aplikasi PHP ini memakai `config.php`; berkas `.env` tidak dibaca.
 
@@ -30,7 +30,7 @@ Anda dapat mengunggah isi repository ke `htdocs`, atau menggunakan ZIP khusus In
 
 1. Aktifkan HTTPS/SSL situs dari panel hosting sebelum memasukkan token atau kata sandi admin.
 2. Buka situs dan pilih **Penyiapan pertama kali** pada layar masuk. Masukkan token setup dari `config.php`, nama pengguna admin, dan kata sandi admin baru minimal 12 karakter.
-3. Installer memeriksa token dengan perbandingan aman, membuat tabel `Admin`, `PerangkatDesa`, `Absensi`, dan `AppMeta` hanya di database yang sudah ada, menyimpan kata sandi dengan `password_hash()`, lalu mengunci setup di `AppMeta`. Tidak ada admin/kredensial default. Setup tidak dapat digunakan kembali, termasuk bila akun admin kemudian dihapus.
+3. Installer memeriksa token dengan perbandingan aman, membuat tabel `Admin`, `PerangkatDesa`, `Absensi`, dan `AppMeta` hanya di database yang sudah ada, menyimpan kata sandi dengan `password_hash()`, lalu mengunci setup di `AppMeta`. Tidak ada admin/kredensial admin default. Setup tidak dapat digunakan kembali, termasuk bila akun admin kemudian dihapus.
 4. Segera kosongkan nilai `setup_token` (`'setup_token' => ''`) di `config.php` atau ganti dengan string acak baru dan simpan config di lokasi privat. Token yang tersisa tetap tidak dapat membuka installer setelah database menandai setup selesai.
 5. Masuk dengan admin baru. Tambahkan perangkat; NIPD dibentuk dari nama dan tanggal lahir atau tanggal lahir pada NIK. NIK tidak harus dipajang di UI publik, tetapi API dan kartu QR admin menggunakannya bila tersedia.
 
@@ -48,12 +48,13 @@ Database MySQL InfinityFree yang baru tidak otomatis berisi data dari SQLite/XAM
 ## Fitur dan batasan hosting
 
 - Lima menu berbahasa Indonesia: pemindai QR, dashboard, data perangkat (cari/tambah/ubah/hapus/status), riwayat dan filter tanggal, serta kartu QR untuk unduh/cetak.
-- Pemindai memakai `BarcodeDetector` bawaan browser bila tersedia. NIK/NIPD manual selalu tersedia sebagai alternatif, tanpa memerlukan kamera.
-- Generator kartu QR disertakan lokal di `assets/qrcode.min.js` (lisensi pada `assets/qrcode-LICENSE.txt`); tidak ada permintaan ke CDN atau layanan eksternal.
+- Pemindai QR dan generator kartu QR disertakan lokal di `assets/html5-qrcode.min.js` dan `assets/qrcode.min.js`, beserta lisensinya; tidak ada permintaan ke CDN atau layanan eksternal.
+- NIK/NIPD manual selalu tersedia sebagai alternatif pemindaian, tanpa memerlukan kamera.
 - Ekspor `.xlsx` dibuat dengan ekstensi PHP `ZipArchive` dan tidak memerlukan Composer. Jika ekstensi/penulisan runtime tidak tersedia, UI menjelaskan masalah lalu mengunduh CSV sebagai alternatif.
 - XLSX berisi tiga lembar: `Rekap Bulanan` (sel kalender D/DP/P, total hadir/lengkap/tidak hadir dan rekap per hari), `Riwayat Absensi` (digabung per perangkat dan tanggal, termasuk jam/GPS), serta `Data Perangkat Desa`.
 - Validasi paket XLSX lokal (SQLite fixture, ekstensi ZIP/XML PHP): `php tests/xlsx_export_test.php`.
-- Untuk memindai QR memakai kamera, akses situs melalui HTTPS dan izinkan akses kamera di browser.
+- Pemindaian QR memakai kamera, sehingga situs harus diakses melalui HTTPS dan izin kamera harus diberikan.
+- Jika kamera tidak tersedia atau izin ditolak, NIPD dapat diketik manual.
 - Direktori `runtime/` hanya dipakai untuk file XLSX sementara, yang dihapus setelah dikirim. Bila hosting tidak mengizinkan penulisan, gunakan CSV.
 
 ## Isi paket
@@ -63,4 +64,4 @@ Database MySQL InfinityFree yang baru tidak otomatis berisi data dari SQLite/XAM
 - `lib/database.php`, `lib/nipd.php`: koneksi ke database yang sudah dibuat, skema tabel, dan pembentukan NIPD.
 - `config.example.php`: template konfigurasi tanpa kredensial.
 - `.htaccess`: front-controller/rewrite dan perlindungan konfigurasi.
-- `assets/`: CSS, JavaScript aplikasi, dan generator QR yang dibundel.
+- `assets/`: CSS, JavaScript aplikasi, pemindai QR, dan generator QR beserta lisensinya.
